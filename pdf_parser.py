@@ -153,6 +153,10 @@ class PDFParser:
         if not data:
             return None
 
+        # Stream (dictionary followed by stream data)
+        if data.startswith(b'<<') and b'stream' in data:
+            return self._parse_stream(data)
+
         # Dictionary
         if data.startswith(b'<<'):
             return self._parse_dictionary(data)
