@@ -5,6 +5,7 @@ A native Python PDF to PNG converter that uses **only the Python standard librar
 ## Features
 
 - ✅ **Zero external dependencies** - Uses only Python standard library
+- ✅ **Automatic PDF conversion** - Automatically handles PDF 1.5+ formats (requires Ghostscript)
 - ✅ **Multi-page PDF support** - Converts all pages in a document
 - ✅ **Custom resolution** - Adjustable DPI settings
 - ✅ **Native implementation** - Pure Python with native PNG encoding and PDF parsing
@@ -32,6 +33,10 @@ cd AlpacaImageGenerator
 
 - Python 3.6 or higher
 - No pip packages needed!
+- **Optional**: Ghostscript (for automatic PDF 1.5+ conversion)
+  - macOS: `brew install ghostscript`
+  - Ubuntu: `sudo apt-get install ghostscript`
+  - Windows: https://www.ghostscript.com/
 
 ## Usage
 
@@ -75,6 +80,32 @@ python pdf_to_png.py document.pdf --width 800 --height 1000
 python pdf_to_png.py report.pdf report --dpi 150
 ```
 
+### Automatic PDF Conversion
+
+The converter **automatically detects and converts** modern PDFs (PDF 1.5+) that use compressed cross-reference streams:
+
+```bash
+# Just use it normally - conversion happens automatically!
+python pdf_to_png.py modern_document.pdf output
+
+# If PDF 1.6 is detected:
+# ⚠️  PDF uses modern format (1.5+) - converting to compatible version...
+# ✓ Successfully converted to compatible format
+# Found 3 page(s)
+# Processing page 1/3... ✓ Saved to output_1.png
+```
+
+**Requirements**: Install Ghostscript for automatic conversion:
+- macOS: `brew install ghostscript`
+- Ubuntu: `sudo apt-get install ghostscript`
+
+**Without Ghostscript**: The converter will provide helpful instructions for manual conversion.
+
+**Disable auto-conversion** (if needed):
+```bash
+python pdf_to_png.py document.pdf --no-auto-convert
+```
+
 ## Command-Line Options
 
 ```
@@ -87,6 +118,7 @@ optional arguments:
   --dpi DPI             Resolution in DPI (default: 72)
   --width WIDTH         Page width in points (default: auto from PDF)
   --height HEIGHT       Page height in points (default: auto from PDF)
+  --no-auto-convert     Disable automatic PDF version conversion
 ```
 
 ## Testing Individual Modules
@@ -242,34 +274,38 @@ Contributions are welcome! Areas for improvement:
 
 ## Troubleshooting
 
-### "No pages found in PDF" or "PDF uses cross-reference streams (PDF 1.5+)"
+### "PDF uses modern format (1.5+) but Ghostscript not found"
 
-**Problem**: Many modern PDFs use compressed cross-reference streams (PDF 1.5+) instead of traditional xref tables. This converter only supports PDF 1.4 and earlier.
+**Problem**: Your PDF uses PDF 1.5+ format with compressed cross-reference streams. The converter detected this and wants to auto-convert, but Ghostscript isn't installed.
 
-**Solution**: Convert the PDF to an older version first:
-
-**Option 1: Using Ghostscript (recommended)**
+**Solution - Install Ghostscript** (recommended):
 ```bash
-# Install Ghostscript first:
-# macOS: brew install ghostscript
-# Ubuntu: sudo apt-get install ghostscript
-# Windows: https://www.ghostscript.com/
+# macOS
+brew install ghostscript
 
-# Convert PDF to version 1.4
-gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -sOutputFile=output.pdf input.pdf
+# Ubuntu/Debian
+sudo apt-get install ghostscript
 
-# Or use the helper script:
-python3 convert_pdf_version.py input.pdf
+# Then just run the converter normally - it will auto-convert:
+python pdf_to_png.py your_file.pdf output
 ```
 
-**Option 2: Using Preview (macOS)**
-1. Open PDF in Preview
-2. File → Export → Reduce File Size
-3. Save and try converting again
+**Alternative - Manual Conversion**:
 
-**Option 3: Using online tools**
-- https://smallpdf.com/compress-pdf
-- Adobe Acrobat: Save As → Reduced Size PDF
+If you can't install Ghostscript, convert manually:
+
+1. **macOS Preview**: Open → File → Export as PDF → Save
+2. **Online tools**: https://smallpdf.com/compress-pdf
+3. **Helper script** (requires Ghostscript): `python3 convert_pdf_version.py input.pdf`
+
+### "No pages found in PDF"
+
+**If auto-conversion is disabled**, you'll see diagnostic information showing:
+- Number of objects parsed
+- Whether a root catalog was found
+- Page tree structure
+
+**Solution**: Enable auto-conversion (it's on by default) or manually convert the PDF.
 
 **Diagnostic tool**:
 ```bash
@@ -279,8 +315,8 @@ python3 diagnose_pdf.py your_file.pdf
 This will show:
 - PDF version
 - xref table format (traditional vs stream)
-- Number of pages detected
-- Detailed error information
+- Whether Ghostscript is available
+- Detailed structure information
 
 ### "Error parsing PDF"
 
