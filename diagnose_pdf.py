@@ -22,6 +22,28 @@ def diagnose_pdf(filename):
         print(f"PDF version: {data[:8].decode('latin-1', errors='ignore')}")
         print()
 
+        # Find startxref position
+        startxref_match = re.search(rb'startxref\s+(\d+)', data[-1024:])
+        if startxref_match:
+            xref_pos = int(startxref_match.group(1))
+            print(f"startxref position: {xref_pos}")
+
+            # Check what's at that position
+            xref_data = data[xref_pos:xref_pos+50]
+            print(f"Data at xref position: {xref_data[:40]}")
+
+            if xref_data.startswith(b'xref'):
+                print("✓ Uses traditional xref table")
+            elif re.match(rb'\d+\s+\d+\s+obj', xref_data):
+                print("⚠️  Uses xref stream (PDF 1.5+) - NOT SUPPORTED YET")
+                print("   This is a compressed cross-reference format.")
+            else:
+                print("❌ Unknown xref format")
+        else:
+            print("❌ No startxref found")
+
+        print()
+
         # Check for linearization
         if b'/Linearized' in data[:1024]:
             print("⚠️  PDF is linearized (optimized for web)")
@@ -30,9 +52,9 @@ def diagnose_pdf(filename):
         if b'/Encrypt' in data:
             print("⚠️  PDF appears to be encrypted")
 
-        # Check for xref stream
-        if b'/XRef' in data:
-            print("⚠️  PDF uses cross-reference streams (PDF 1.5+)")
+        # Check for xref stream markers
+        if b'/XRef' in data or b'/Type/XRef' in data:
+            print("⚠️  PDF contains xref stream markers (PDF 1.5+)")
 
         print()
 

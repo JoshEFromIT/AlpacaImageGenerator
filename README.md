@@ -130,6 +130,7 @@ This is a **simplified implementation** using only standard library components:
 
 ### Known Limitations
 
+- ⚠️ **PDF 1.5+ (xref streams)**: Modern PDFs with compressed cross-reference streams are not supported (see Troubleshooting below)
 - ⚠️ **Font rendering**: Text is rendered as simplified placeholders (no actual font glyphs)
 - ⚠️ **Complex graphics**: Advanced path operations are simplified
 - ⚠️ **Images**: Embedded images in PDFs are not extracted/rendered
@@ -241,13 +242,49 @@ Contributions are welcome! Areas for improvement:
 
 ## Troubleshooting
 
-### "No pages found in PDF"
+### "No pages found in PDF" or "PDF uses cross-reference streams (PDF 1.5+)"
 
-The PDF structure may be too complex. Try with a simpler PDF.
+**Problem**: Many modern PDFs use compressed cross-reference streams (PDF 1.5+) instead of traditional xref tables. This converter only supports PDF 1.4 and earlier.
+
+**Solution**: Convert the PDF to an older version first:
+
+**Option 1: Using Ghostscript (recommended)**
+```bash
+# Install Ghostscript first:
+# macOS: brew install ghostscript
+# Ubuntu: sudo apt-get install ghostscript
+# Windows: https://www.ghostscript.com/
+
+# Convert PDF to version 1.4
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -sOutputFile=output.pdf input.pdf
+
+# Or use the helper script:
+python3 convert_pdf_version.py input.pdf
+```
+
+**Option 2: Using Preview (macOS)**
+1. Open PDF in Preview
+2. File → Export → Reduce File Size
+3. Save and try converting again
+
+**Option 3: Using online tools**
+- https://smallpdf.com/compress-pdf
+- Adobe Acrobat: Save As → Reduced Size PDF
+
+**Diagnostic tool**:
+```bash
+python3 diagnose_pdf.py your_file.pdf
+```
+
+This will show:
+- PDF version
+- xref table format (traditional vs stream)
+- Number of pages detected
+- Detailed error information
 
 ### "Error parsing PDF"
 
-The PDF may use features not supported by this basic parser.
+The PDF may use features not supported by this basic parser (encryption, linearization, etc.)
 
 ### Output images are blank
 

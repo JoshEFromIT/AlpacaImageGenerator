@@ -48,10 +48,25 @@ class PDFParser:
         # Find xref table
         xref_pos = self._find_xref()
         if xref_pos == -1:
-            raise ValueError("Could not find xref table")
+            raise ValueError("Could not find xref table (startxref not found)")
 
-        # Parse xref and trailer
-        self._parse_xref(xref_pos)
+        # Check what's at the xref position
+        xref_data = self.data[xref_pos:xref_pos+20]
+
+        if xref_data.startswith(b'xref'):
+            # Traditional xref table
+            self._parse_xref(xref_pos)
+        else:
+            # Might be xref stream (PDF 1.5+)
+            # Try to parse as object
+            obj = self._parse_object_at(xref_pos)
+            if obj and isinstance(obj.value, dict):
+                # Check if it's an xref stream
+                if obj.value.get('Type') == b'/XRef' or 'Type' in obj.value:
+                    raise ValueError("PDF uses cross-reference streams (PDF 1.5+), which are not yet supported. " +
+                                   "Try converting the PDF to an older format with: " +
+                                   "'gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -o output.pdf input.pdf'")
+            raise ValueError(f"Unexpected data at xref position: {xref_data[:10]}")
 
         # Parse all objects
         for obj_num, offset in self.xref.items():
