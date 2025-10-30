@@ -1,0 +1,279 @@
+# PDF to PNG Converter
+
+A native Python PDF to PNG converter that uses **only the Python standard library** - no external dependencies required!
+
+## Features
+
+- ✅ **Zero external dependencies** - Uses only Python standard library
+- ✅ **Multi-page PDF support** - Converts all pages in a document
+- ✅ **Custom resolution** - Adjustable DPI settings
+- ✅ **Native implementation** - Pure Python with native PNG encoding and PDF parsing
+- ✅ **Simple CLI interface** - Easy to use command-line tool
+
+## Components
+
+The converter consists of four main modules:
+
+1. **`png_encoder.py`** - Native PNG encoder using zlib compression
+2. **`pdf_parser.py`** - PDF structure parser (objects, pages, content streams)
+3. **`pdf_renderer.py`** - PDF content stream renderer (converts PDF to raster)
+4. **`pdf_to_png.py`** - Main converter script (CLI interface)
+
+## Installation
+
+No installation required! Just clone the repository:
+
+```bash
+git clone <repository-url>
+cd AlpacaImageGenerator
+```
+
+## Requirements
+
+- Python 3.6 or higher
+- No pip packages needed!
+
+## Usage
+
+### Basic Usage
+
+Convert a PDF to PNG:
+
+```bash
+python pdf_to_png.py input.pdf
+```
+
+This creates:
+- `page.png` (for single-page PDFs)
+- `page_001.png`, `page_002.png`, etc. (for multi-page PDFs)
+
+### Custom Output Prefix
+
+```bash
+python pdf_to_png.py document.pdf output
+```
+
+Creates: `output_001.png`, `output_002.png`, etc.
+
+### Custom Resolution
+
+```bash
+python pdf_to_png.py document.pdf --dpi 150
+```
+
+Higher DPI = higher quality (and larger file size)
+
+### Custom Page Size
+
+```bash
+python pdf_to_png.py document.pdf --width 800 --height 1000
+```
+
+### Full Example
+
+```bash
+python pdf_to_png.py report.pdf report --dpi 150
+```
+
+## Command-Line Options
+
+```
+positional arguments:
+  input                 Input PDF file
+  output                Output file prefix (default: page)
+
+optional arguments:
+  -h, --help            Show help message
+  --dpi DPI             Resolution in DPI (default: 72)
+  --width WIDTH         Page width in points (default: auto from PDF)
+  --height HEIGHT       Page height in points (default: auto from PDF)
+```
+
+## Testing Individual Modules
+
+### Test PNG Encoder
+
+```bash
+python png_encoder.py
+```
+
+Creates `test_output.png` with a gradient pattern.
+
+### Test PDF Parser
+
+```bash
+python pdf_parser.py sample.pdf
+```
+
+Displays PDF structure and page information.
+
+### Test PDF Renderer
+
+```bash
+python pdf_renderer.py
+```
+
+Creates `test_render.png` with test shapes.
+
+## Limitations
+
+This is a **simplified implementation** using only standard library components:
+
+### What Works Well
+
+- ✅ Basic PDF structure parsing
+- ✅ Simple text rendering (placeholder)
+- ✅ Basic graphics (rectangles, lines, fills)
+- ✅ Color support (RGB, grayscale)
+- ✅ PNG encoding with compression
+- ✅ Multi-page documents
+
+### Known Limitations
+
+- ⚠️ **Font rendering**: Text is rendered as simplified placeholders (no actual font glyphs)
+- ⚠️ **Complex graphics**: Advanced path operations are simplified
+- ⚠️ **Images**: Embedded images in PDFs are not extracted/rendered
+- ⚠️ **Advanced features**: No support for transparency, patterns, gradients, etc.
+- ⚠️ **Compressed objects**: Limited support for some PDF compression methods
+
+### Why These Limitations?
+
+To avoid external dependencies:
+- Real font rendering requires font file parsing (TrueType, OpenType)
+- Image decoding requires JPEG/JPEG2000/CCITT decoders
+- Advanced graphics require complex polygon filling algorithms
+
+For production use, consider libraries like **pdf2image** or **PyMuPDF** which use external tools like **poppler** or **MuPDF**.
+
+## How It Works
+
+### 1. PDF Parsing (`pdf_parser.py`)
+
+The parser reads the PDF binary format:
+
+1. Locates the cross-reference (xref) table
+2. Parses PDF objects (dictionaries, arrays, streams)
+3. Builds the page tree
+4. Extracts content streams for each page
+5. Decompresses streams using zlib (FlateDecode)
+
+### 2. Content Rendering (`pdf_renderer.py`)
+
+The renderer interprets PDF drawing operators:
+
+1. Tokenizes the content stream
+2. Maintains graphics state (colors, transforms, etc.)
+3. Executes operators (moveto, lineto, rectangle, text, etc.)
+4. Rasterizes to pixel buffer
+
+### 3. PNG Encoding (`png_encoder.py`)
+
+The encoder creates PNG files:
+
+1. Adds PNG signature
+2. Creates IHDR chunk (image header)
+3. Creates IDAT chunk (compressed image data with filtering)
+4. Creates IEND chunk (end marker)
+5. Calculates CRC checksums for integrity
+
+## Architecture
+
+```
+PDF File
+   ↓
+[PDF Parser] → Extracts pages and content streams
+   ↓
+[PDF Renderer] → Interprets operators, renders to pixels
+   ↓
+[PNG Encoder] → Compresses and writes PNG file
+   ↓
+PNG Files
+```
+
+## Example Output
+
+For a 3-page PDF:
+
+```
+$ python pdf_to_png.py document.pdf output --dpi 100
+
+Loading PDF: document.pdf
+Found 3 page(s)
+Processing page 1/3... ✓ Saved to output_1.png (595x842)
+Processing page 2/3... ✓ Saved to output_2.png (595x842)
+Processing page 3/3... ✓ Saved to output_3.png (595x842)
+
+Conversion complete! Generated 3 file(s):
+  - output_1.png
+  - output_2.png
+  - output_3.png
+```
+
+## Technical Details
+
+### PDF Operators Supported
+
+**Graphics State**: `q`, `Q`, `cm`, `w`
+**Color**: `rg`, `RG`, `g`, `G`
+**Path Construction**: `m`, `l`, `re`, `h`
+**Path Painting**: `S`, `f`, `F`, `B`, `n`
+**Text**: `BT`, `ET`, `Tf`, `Td`, `TD`, `Tm`, `T*`, `Tj`, `TJ`, `'`, `TL`, `Tc`, `Tw`
+
+### PNG Chunks Created
+
+- **IHDR**: Image header (width, height, bit depth, color type)
+- **IDAT**: Image data (compressed with zlib)
+- **IEND**: End of file marker
+
+## License
+
+This project is provided as-is for educational purposes.
+
+## Contributing
+
+Contributions are welcome! Areas for improvement:
+
+1. Better text rendering (basic font support)
+2. Bezier curve support for path operations
+3. Better polygon filling algorithms
+4. Support for more PDF compression filters
+5. Error handling and validation
+
+## Troubleshooting
+
+### "No pages found in PDF"
+
+The PDF structure may be too complex. Try with a simpler PDF.
+
+### "Error parsing PDF"
+
+The PDF may use features not supported by this basic parser.
+
+### Output images are blank
+
+The PDF may use advanced rendering features not implemented in this basic renderer.
+
+### Text appears as rectangles
+
+This is expected - true font rendering requires external font libraries.
+
+## Alternatives
+
+For production use with full PDF support:
+
+```bash
+# Using pdf2image (requires poppler)
+pip install pdf2image
+
+# Using PyMuPDF
+pip install pymupdf
+```
+
+## Credits
+
+Implemented using only Python standard library:
+- `zlib` - Compression/decompression
+- `struct` - Binary data handling
+- `re` - Regular expressions for parsing
+
+No external packages required!
