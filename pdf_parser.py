@@ -77,13 +77,16 @@ class PDFParser:
 
     def _parse_xref(self, pos):
         """Parse cross-reference table"""
-        data = self.data[pos:pos+10000]  # Read chunk
+        # Read enough data for xref table (expand if needed)
+        chunk_size = min(100000, len(self.data) - pos)
+        data = self.data[pos:pos+chunk_size]
 
         # Find xref keyword
         if not data.startswith(b'xref'):
             return
 
-        lines = data.split(b'\n')
+        # Handle different line ending styles
+        lines = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n').split(b'\n')
         idx = 1
 
         # Parse xref entries
@@ -91,6 +94,10 @@ class PDFParser:
             line = lines[idx].strip()
             if line.startswith(b'trailer'):
                 break
+
+            if not line:  # Skip empty lines
+                idx += 1
+                continue
 
             # Parse subsection header (start_num count)
             match = re.match(rb'(\d+)\s+(\d+)', line)
@@ -104,10 +111,17 @@ class PDFParser:
                     if idx >= len(lines):
                         break
                     entry = lines[idx].strip()
+                    if not entry:  # Skip empty lines
+                        idx += 1
+                        continue
                     parts = entry.split()
                     if len(parts) >= 3:
                         offset = int(parts[0])
-                        self.xref[start_num + i] = offset
+                        gen_num = int(parts[1])
+                        flag = parts[2]
+                        # Only add 'n' (in-use) entries
+                        if flag == b'n':
+                            self.xref[start_num + i] = offset
                     idx += 1
             else:
                 idx += 1
@@ -492,18 +506,36 @@ class PDFParser:
 
         node_type = node.get('Type')
 
+        # Resolve indirect reference if Type is a reference
+        if isinstance(node_type, dict) and node_type.get('type') == 'ref':
+            node_type = self._resolve_reference(node_type)
+
         # Normalize node type for comparison
         if isinstance(node_type, bytes):
             node_type = node_type.decode('latin-1', errors='ignore')
 
-        if node_type in ('/Pages', 'Pages'):
+        # Normalize: remove leading slash and whitespace, case-insensitive
+        if isinstance(node_type, str):
+            node_type_normalized = node_type.strip().lstrip('/').lower()
+        else:
+            node_type_normalized = ''
+
+        if node_type_normalized == 'pages':
             # Pages node - recurse into kids
             kids = node.get('Kids', [])
+            if not kids:
+                # Some PDFs might have Kids as an indirect reference
+                kids_ref = node.get('Kids')
+                if isinstance(kids_ref, dict) and kids_ref.get('type') == 'ref':
+                    kids = self._resolve_reference(kids_ref)
+                if not isinstance(kids, list):
+                    kids = []
+
             for kid_ref in kids:
                 kid = self._resolve_reference(kid_ref)
                 pages.extend(self._get_pages_recursive(kid, visited))
 
-        elif node_type in ('/Page', 'Page'):
+        elif node_type_normalized == 'page':
             # Leaf page node
             pages.append(node)
 

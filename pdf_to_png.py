@@ -63,6 +63,22 @@ class PDFToPNGConverter:
 
         if num_pages == 0:
             print("No pages found in PDF")
+            print("\nDiagnostic information:")
+            print(f"  - Parsed {len(parser.objects)} objects")
+            print(f"  - Root catalog: {parser.root is not None}")
+            if parser.root:
+                print(f"  - Root type: {parser.root.get('Type')}")
+                pages_ref = parser.root.get('Pages')
+                print(f"  - Pages reference: {pages_ref}")
+                if pages_ref:
+                    pages_obj = parser._resolve_reference(pages_ref)
+                    print(f"  - Pages object type: {type(pages_obj)}")
+                    if isinstance(pages_obj, dict):
+                        print(f"  - Pages Type field: {pages_obj.get('Type')}")
+                        print(f"  - Pages Count: {pages_obj.get('Count')}")
+                        print(f"  - Pages Kids: {pages_obj.get('Kids')}")
+            print("\nTry running: python3 diagnose_pdf.py your_file.pdf")
+            print("This will provide detailed diagnostics to help fix the issue.")
             return []
 
         print(f"Found {num_pages} page(s)")
